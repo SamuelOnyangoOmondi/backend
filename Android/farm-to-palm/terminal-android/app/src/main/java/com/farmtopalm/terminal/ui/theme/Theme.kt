@@ -12,24 +12,33 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-// ——— Light mode (design system) ———
-private val BackgroundLight = Color(0xFFF8FAFC)
-private val PrimaryLight = Color(0xFF2563EB)
-private val PrimaryHoverLight = Color(0xFF1D4ED8)
-private val SuccessLight = Color(0xFF16A34A)
-private val WarningLight = Color(0xFFF59E0B)
-private val ErrorLight = Color(0xFFDC2626)
+// ——— Supa School design system (aligned with supaschool tailwind/index.css) ———
+// Primary purple #660099, secondary yellow #FFCC00, pastel accents
+private val SupaPrimary = Color(0xFF660099)
+private val SupaPrimaryLight = Color(0xFFA31AE6)
+private val SupaPrimaryDark = Color(0xFF4D0073)
+private val SupaSecondary = Color(0xFFFFCC00)
+private val SupaSecondaryLight = Color(0xFFFFD633)
+private val SupaSecondaryDark = Color(0xFFE6B800)
+private val BackgroundLight = Color(0xFFFFFFFF)
 private val CardBackgroundLight = Color(0xFFFFFFFF)
 private val BorderLight = Color(0xFFE2E8F0)
 private val PrimaryTextLight = Color(0xFF0F172A)
 private val SecondaryTextLight = Color(0xFF64748B)
+private val MutedLight = Color(0xFFF1F5F9)
+private val SuccessLight = Color(0xFF16A34A)
+private val ErrorLight = Color(0xFFDC2626)
 
 private val LightColorScheme = lightColorScheme(
-    primary = PrimaryLight,
+    primary = SupaPrimary,
     onPrimary = Color.White,
-    primaryContainer = PrimaryLight.copy(alpha = 0.12f),
+    primaryContainer = SupaPrimary.copy(alpha = 0.12f),
+    secondary = SupaSecondary,
+    onSecondary = PrimaryTextLight,
+    secondaryContainer = SupaSecondaryLight.copy(alpha = 0.4f),
+    onSecondaryContainer = PrimaryTextLight,
     surface = CardBackgroundLight,
-    surfaceVariant = BackgroundLight,
+    surfaceVariant = MutedLight,
     onSurface = PrimaryTextLight,
     onSurfaceVariant = SecondaryTextLight,
     outline = BorderLight,
@@ -41,15 +50,16 @@ private val LightColorScheme = lightColorScheme(
     onBackground = PrimaryTextLight,
 )
 
-// ——— Dark mode ———
+// ——— Dark mode (Supa School dark) ———
 private val BackgroundDark = Color(0xFF0F172A)
 private val CardDark = Color(0xFF1E293B)
-private val PrimaryDark = Color(0xFF3B82F6)
 private val TextDark = Color(0xFFF8FAFC)
 
 private val DarkColorScheme = darkColorScheme(
-    primary = PrimaryDark,
+    primary = SupaPrimaryLight,
     onPrimary = Color.White,
+    secondary = SupaSecondary,
+    onSecondary = Color.Black,
     surface = CardDark,
     onSurface = TextDark,
     surfaceVariant = CardDark.copy(alpha = 0.8f),

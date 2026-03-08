@@ -15,12 +15,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.farmtopalm.terminal.BuildConfig
 import com.farmtopalm.terminal.data.crypto.Crypto
 import com.farmtopalm.terminal.data.db.AppDatabase
 import com.farmtopalm.terminal.di.AppModule
 import com.farmtopalm.terminal.nfc.NfcManager
 import com.farmtopalm.terminal.nfc.NfcParser
 import com.farmtopalm.terminal.provisioning.ProvisioningManager
+import com.farmtopalm.terminal.sync.ApiClient
 import com.farmtopalm.terminal.sync.SyncScheduler
 import com.farmtopalm.terminal.ui.components.VendorSdkBanner
 import com.farmtopalm.terminal.util.Logger
@@ -86,7 +88,7 @@ class MainActivity : ComponentActivity() {
                         if (config.value != null) VendorSdkBanner()
                         when {
                         config.value == null -> ActivationScreen(
-                            defaultBaseUrl = "http://192.168.1.128:3000",
+                            defaultBaseUrl = BuildConfig.DEFAULT_BACKEND_URL.takeIf { it.isNotBlank() } ?: "http://192.168.1.128:3000",
                             onActivated = { route = "home"; scope.launch { config.value = terminalRepo.getConfig() } },
                             onOpenWifiSettings = { startActivity(Intent(Settings.ACTION_WIRELESS_SETTINGS)) },
                             onGoHome = { startActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) },
@@ -210,23 +212,68 @@ class MainActivity : ComponentActivity() {
                         route == "sync" -> config.value?.let { c ->
                             val unsyncedA = remember { mutableStateOf(0) }
                             val unsyncedM = remember { mutableStateOf(0) }
-                            scope.launch { unsyncedA.value = eventRepo.getUnsyncedAttendance().size; unsyncedM.value = eventRepo.getUnsyncedMeals().size }
+                            var syncStudentsMessage by remember { mutableStateOf<String?>(null) }
+                            var syncStudentsLoading by remember { mutableStateOf(false) }
+                            LaunchedEffect(Unit) { unsyncedA.value = eventRepo.getUnsyncedAttendance().size; unsyncedM.value = eventRepo.getUnsyncedMeals().size }
                             SyncStatusScreen(
                                 unsyncedAttendance = unsyncedA.value,
                                 unsyncedMeals = unsyncedM.value,
                                 lastSyncTime = c.lastHeartbeatAt,
                                 onSyncNow = { SyncScheduler.runNow(ctx) },
+                                onSyncStudentsFromSupaSchool = {
+                                    scope.launch {
+                                        syncStudentsLoading = true
+                                        syncStudentsMessage = null
+                                        try {
+                                            val tokenBytes = try { Crypto.decrypt(ctx, c.tokenEnc) } catch (e: Exception) { null }
+                                            if (tokenBytes == null) { syncStudentsMessage = "Token error"; return@launch }
+                                            val token = String(tokenBytes)
+                                            val client = ApiClient(c.apiBaseUrl, c.apiBaseUrlFallback, token)
+                                            when (val result = client.getSupaschoolStudents()) {
+                                                is com.farmtopalm.terminal.util.Result.Success -> {
+                                                    val list = result.value
+                                                    list.forEach { s ->
+                                                        val name = listOf(s.firstName, s.lastName).filter { it.isNotBlank() }.joinToString(" ").ifBlank { s.admissionNumber }
+                                                        studentRepo.upsertFromSupaSchool(s.id, name.ifBlank { s.id }, c.schoolId)
+                                                    }
+                                                    withContext(Dispatchers.Main) { syncStudentsMessage = "Synced ${list.size} students from Supa School" }
+                                                }
+                                                is com.farmtopalm.terminal.util.Result.Error -> withContext(Dispatchers.Main) { syncStudentsMessage = result.message }
+                                            }
+                                        } finally { withContext(Dispatchers.Main) { syncStudentsLoading = false } }
+                                    }
+                                },
+                                syncStudentsMessage = syncStudentsMessage,
+                                syncStudentsLoading = syncStudentsLoading,
                                 onBack = { route = "home" }
                             )
                         } ?: run { route = "home" }
                         route == "device" -> DeviceStatusScreen(palmStatus = palmManager.status(), onBack = { route = "home" })
-                        route == "settings" -> SettingsScreen(
-                            apiBaseUrl = config.value?.apiBaseUrl ?: "",
-                            mealRequiresPalm = mealRequiresPalm,
-                            onMealRequiresPalmChange = { mealRequiresPalm = it; prefs.edit().putBoolean("meal_requires_palm", it).apply() },
-                            onAdminPinChange = { },
-                            onBack = { route = "home" }
-                        )
+                        route == "settings" -> {
+                            var editableApiUrl by remember { mutableStateOf(config.value?.apiBaseUrl ?: "") }
+                            var editableApiUrlFallback by remember { mutableStateOf(config.value?.apiBaseUrlFallback ?: "") }
+                            LaunchedEffect(route) {
+                                editableApiUrl = config.value?.apiBaseUrl ?: ""
+                                editableApiUrlFallback = config.value?.apiBaseUrlFallback ?: ""
+                            }
+                            SettingsScreen(
+                                apiBaseUrl = editableApiUrl,
+                                onApiBaseUrlChange = { editableApiUrl = it },
+                                apiBaseUrlFallback = editableApiUrlFallback,
+                                onApiBaseUrlFallbackChange = { editableApiUrlFallback = it },
+                                onSaveUrls = {
+                                    scope.launch {
+                                        terminalRepo.updateApiBaseUrl(editableApiUrl)
+                                        terminalRepo.updateApiBaseUrlFallback(editableApiUrlFallback.ifBlank { null })
+                                        config.value = terminalRepo.getConfig()
+                                    }
+                                },
+                                mealRequiresPalm = mealRequiresPalm,
+                                onMealRequiresPalmChange = { mealRequiresPalm = it; prefs.edit().putBoolean("meal_requires_palm", it).apply() },
+                                onAdminPinChange = { },
+                                onBack = { route = "home" }
+                            )
+                        }
                     }
                     }
                 }

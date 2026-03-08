@@ -9,6 +9,8 @@ data class TerminalConfigEntity(
     val terminalId: String,
     val schoolId: String,
     val apiBaseUrl: String,
+    /** Optional local backend URL; used only when primary (cloud/Supabase) is unreachable. */
+    val apiBaseUrlFallback: String? = null,
     val tokenEnc: ByteArray,
     val activatedAt: Long,
     val lastHeartbeatAt: Long?

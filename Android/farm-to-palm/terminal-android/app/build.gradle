@@ -4,6 +4,28 @@ plugins {
     id 'kotlin-kapt'
 }
 
+// Read default backend URL from backend/.env (BACKEND_PUBLIC_URL or API_BASE_URL) so the device uses it without manual entry.
+def readDefaultBackendUrl() {
+    def envFile = file("${rootProject.projectDir}/../backend/.env")
+    if (envFile.exists()) {
+        def content = envFile.text
+        def lines = content.readLines()
+        for (line in lines) {
+            def stripped = line.trim()
+            if (stripped.startsWith("#") || stripped.isEmpty()) continue
+            if (stripped.startsWith("BACKEND_PUBLIC_URL=")) {
+                def v = stripped.substring(19).trim().replaceAll(/^["']|["']$/, '')
+                if (v) return v
+            }
+            if (stripped.startsWith("API_BASE_URL=")) {
+                def v = stripped.substring(13).trim().replaceAll(/^["']|["']$/, '')
+                if (v) return v
+            }
+        }
+    }
+    return ""
+}
+
 android {
     namespace 'com.farmtopalm.terminal'
     compileSdk 34
@@ -14,6 +36,7 @@ android {
         versionCode 1
         versionName "1.0.0"
         buildConfigField "boolean", "USE_VENDOR_PALM_SDK", "false"
+        buildConfigField "String", "DEFAULT_BACKEND_URL", "\"${readDefaultBackendUrl().replace('\\', '\\\\').replace('"', '\\"')}\""
         ndk {
             abiFilters "arm64-v8a"
         }

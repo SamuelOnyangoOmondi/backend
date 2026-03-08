@@ -1,6 +1,7 @@
 package com.farmtopalm.terminal.ui.screens
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -91,50 +92,75 @@ fun MealScreen(
         }
     }
 
+    // Supa School–style layout: card, 8dp radius (0.5rem), primary/secondary colors from theme
+    val cardShape = RoundedCornerShape(8.dp)
     Column(
-        Modifier.fillMaxSize().padding(24.dp),
+        Modifier
+            .fillMaxSize()
+            .padding(24.dp)
+            .statusBarsPadding()
+            .navigationBarsPadding(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text("Meal", style = MaterialTheme.typography.headlineMedium)
-        Spacer(Modifier.height(24.dp))
-
-        when (val state = palmState) {
-            is MealPalmScanState.Idle -> {
-                if (openError != null) {
-                    Text("Scanner error", style = MaterialTheme.typography.bodyLarge)
-                    Text(openError!!, style = MaterialTheme.typography.bodySmall)
-                    if (openError!!.contains("already in use") || openError!!.contains("device index")) {
-                        Text("Tap Retry to restart scanner", style = MaterialTheme.typography.bodyMedium)
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = cardShape,
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Column(
+                Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    "Meal",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(Modifier.height(24.dp))
+                when (val state = palmState) {
+                    is MealPalmScanState.Idle -> {
+                        if (openError != null) {
+                            Text("Scanner error", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.error)
+                            Spacer(Modifier.height(4.dp))
+                            Text(openError!!, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            if (openError!!.contains("already in use") || openError!!.contains("device index")) {
+                                Spacer(Modifier.height(4.dp))
+                                Text("Tap Retry to restart scanner", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+                            }
+                        } else if (!openReady) {
+                            CircularProgressIndicator(Modifier.size(40.dp), color = MaterialTheme.colorScheme.primary)
+                            Spacer(Modifier.height(12.dp))
+                            Text("Opening scanner…", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+                            Text("Please wait", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        } else {
+                            Text(status, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+                            Text("Tap Scan Palm or use NFC", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
-                } else if (!openReady) {
-                    Text("Opening scanner…", style = MaterialTheme.typography.bodyLarge)
-                    Text("Please wait", style = MaterialTheme.typography.bodyMedium)
-                } else {
-                    Text(status, style = MaterialTheme.typography.bodyLarge)
-                    Text("Tap Scan Palm or use NFC", style = MaterialTheme.typography.bodyMedium)
-                }
-            }
-            is MealPalmScanState.Scanning -> {
-                CircularProgressIndicator(Modifier.size(56.dp))
-                Spacer(Modifier.height(8.dp))
-                Text("Scanning…", style = MaterialTheme.typography.bodyLarge)
-                Text("Place your palm on the reader", style = MaterialTheme.typography.bodyMedium)
-            }
-            is MealPalmScanState.Matched -> {
-                Text("Welcome, ${state.studentId}", style = MaterialTheme.typography.titleMedium)
-                Text("Meal recorded", style = MaterialTheme.typography.bodyMedium)
-            }
-            is MealPalmScanState.NoMatch -> {
-                Text("No match", style = MaterialTheme.typography.bodyLarge)
-                Text("Tap Scan Palm to try again", style = MaterialTheme.typography.bodyMedium)
-            }
-            is MealPalmScanState.Error -> {
-                Text("Scan failed", style = MaterialTheme.typography.bodyLarge)
-                Text(state.message, style = MaterialTheme.typography.bodySmall)
-                if (state.message.contains("TIMEOUT", ignoreCase = true) || state.message.contains("no palm", ignoreCase = true)) {
-                    Spacer(Modifier.height(8.dp))
-                    Text("Tip: Hold palm 2–4 cm above sensor, avoid shadows.", style = MaterialTheme.typography.bodySmall)
+                    is MealPalmScanState.Scanning -> {
+                        CircularProgressIndicator(Modifier.size(56.dp), color = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.height(8.dp))
+                        Text("Scanning…", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary)
+                        Text("Place your palm on the reader", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    is MealPalmScanState.Matched -> {
+                        Text("Welcome, ${state.studentId}", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                        Text("Meal recorded", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    is MealPalmScanState.NoMatch -> {
+                        Text("No match", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+                        Text("Tap Scan Palm to try again", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    is MealPalmScanState.Error -> {
+                        Text("Scan failed", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.error)
+                        Text(state.message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        if (state.message.contains("TIMEOUT", ignoreCase = true) || state.message.contains("no palm", ignoreCase = true)) {
+                            Spacer(Modifier.height(8.dp))
+                            Text("Tip: Hold palm 2–4 cm above sensor, avoid shadows.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
                 }
             }
         }
@@ -144,7 +170,9 @@ fun MealScreen(
         Button(
             onClick = { startPalmScan() },
             enabled = palmState !is MealPalmScanState.Scanning && openReady && openError == null,
-            modifier = Modifier.heightIn(min = 88.dp)
+            modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
+            shape = RoundedCornerShape(8.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)
         ) {
             Text(
                 when (palmState) {
@@ -154,9 +182,9 @@ fun MealScreen(
             )
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(12.dp))
         if (openError != null && (openError!!.contains("already in use") || openError!!.contains("device index"))) {
-            Button(
+            FilledTonalButton(
                 onClick = {
                     openReady = false
                     openError = null
@@ -169,10 +197,16 @@ fun MealScreen(
                         }
                     }
                 },
-                modifier = Modifier.heightIn(min = 88.dp)
+                modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
+                shape = RoundedCornerShape(8.dp),
+                colors = ButtonDefaults.filledTonalButtonColors(containerColor = MaterialTheme.colorScheme.secondaryContainer, contentColor = MaterialTheme.colorScheme.onSecondaryContainer)
             ) { Text("Retry scanner") }
             Spacer(Modifier.height(8.dp))
         }
-        TextButton(onClick = onBack, modifier = Modifier.heightIn(min = 68.dp)) { Text("Back") }
+        TextButton(
+            onClick = onBack,
+            modifier = Modifier.heightIn(min = 48.dp),
+            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.primary)
+        ) { Text("Back") }
     }
 }

@@ -5,6 +5,12 @@ import { signToken } from '../../shared/crypto/jwt.js';
 import { env } from '../../env.js';
 import crypto from 'crypto';
 
+function getApiBaseUrlForDevice(): string {
+  const url = (env.BACKEND_PUBLIC_URL || process.env.API_BASE_URL || '').trim();
+  if (url) return url.replace(/\/$/, '');
+  return `http://localhost:${env.PORT}`;
+}
+
 export default async function (app: FastifyInstance) {
   app.post('/v1/terminals/activate', async (req: FastifyRequest, reply: FastifyReply) => {
     const parsed = activateBody.safeParse(req.body);
@@ -34,7 +40,7 @@ export default async function (app: FastifyInstance) {
     return reply.send({
       terminalId: row.id,
       schoolId: row.school_id,
-      apiBaseUrl: process.env.API_BASE_URL ?? `http://localhost:${env.PORT}`,
+      apiBaseUrl: getApiBaseUrlForDevice(),
       token,
     });
   });

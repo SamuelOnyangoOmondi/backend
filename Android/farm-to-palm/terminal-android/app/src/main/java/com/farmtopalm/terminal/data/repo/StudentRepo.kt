@@ -23,6 +23,15 @@ class StudentRepo(private val dao: StudentDao) {
         }
     }
 
+    /**
+     * Upsert a student from Supa School sync (id = externalId = Supabase student id).
+     * So attendance/meal events sync to the same DB as the Supa School dashboard.
+     */
+    suspend fun upsertFromSupaSchool(supabaseId: String, name: String, schoolId: String) {
+        val now = System.currentTimeMillis()
+        dao.insert(StudentEntity(id = supabaseId, externalId = supabaseId, name = name, schoolId = schoolId, createdAt = now, updatedAt = now))
+    }
+
     suspend fun insert(student: StudentEntity) = dao.insert(student)
     suspend fun delete(student: StudentEntity) = dao.delete(student)
 }

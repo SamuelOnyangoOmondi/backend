@@ -31,7 +31,7 @@ class SyncWorker(
             return Result.retry()
         }
         val token = String(tokenBytes)
-        val client = ApiClient(config.apiBaseUrl, token)
+        val client = ApiClient(config.apiBaseUrl, config.apiBaseUrlFallback, token)
 
         val attendance = eventRepo.getUnsyncedAttendance()
         val meals = eventRepo.getUnsyncedMeals()

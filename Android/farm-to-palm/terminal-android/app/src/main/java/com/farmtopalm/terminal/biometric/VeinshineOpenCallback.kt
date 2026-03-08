@@ -5,8 +5,8 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * Real implementation of [IOpenCallback] (no Proxy). Use this instead of a reflective
- * Proxy so the vendor JNI layer gets a normal object and does not hit weak-global-ref bugs.
+ * Real implementation of [IOpenCallback] (no Proxy). Use this so the vendor JNI layer
+ * gets a normal object and the scanner opens correctly (device blinking/working).
  *
  * Sets [openSuccessSignalled] in onOpenSuccess so the waiter can treat success as authoritative
  * even if the latch await timed out a moment before the callback ran (avoids false "scanner error").

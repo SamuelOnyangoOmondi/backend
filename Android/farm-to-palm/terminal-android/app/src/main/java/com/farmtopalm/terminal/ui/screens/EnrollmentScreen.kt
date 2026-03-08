@@ -1,6 +1,7 @@
 package com.farmtopalm.terminal.ui.screens
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -43,29 +44,81 @@ fun EnrollmentScreen(
         }
     }
 
-    Column(Modifier.fillMaxSize().padding(24.dp)) {
-        Text("Enrollment", style = MaterialTheme.typography.headlineMedium)
-        Spacer(Modifier.height(16.dp))
-        OutlinedTextField(value = externalId, onValueChange = { externalId = it }, label = { Text("External ID") }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name") }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
-        HandDropdown(value = hand, onChange = { hand = it }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
-        Text(status, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 8.dp))
-        if (status.contains("already in use") || status.contains("device index")) {
-            Button(
-                onClick = {
-                    openReady = false
-                    status = "Opening scanner…"
-                    palmManager.release()
-                    palmManager.open(scope) { openResult ->
-                        openReady = true
-                        when (openResult) {
-                            is Result.Error -> status = "Error: ${(openResult as Result.Error).message}"
-                            is Result.Success -> status = ""
-                        }
-                    }
-                },
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp).heightIn(min = 88.dp)
-            ) { Text("Retry scanner") }
+    // Supa School–style: card, 8dp radius, primary/secondary colors
+    val cardShape = RoundedCornerShape(8.dp)
+    Column(
+        Modifier
+            .fillMaxSize()
+            .padding(24.dp)
+            .statusBarsPadding()
+            .navigationBarsPadding()
+    ) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = cardShape,
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Column(Modifier.padding(24.dp)) {
+                Text(
+                    "Enrollment",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = externalId,
+                    onValueChange = { externalId = it },
+                    label = { Text("External ID") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        focusedLabelColor = MaterialTheme.colorScheme.primary,
+                        cursorColor = MaterialTheme.colorScheme.primary,
+                        focusedLeadingIconColor = MaterialTheme.colorScheme.primary,
+                        focusedTrailingIconColor = MaterialTheme.colorScheme.primary
+                    )
+                )
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Name") },
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        focusedLabelColor = MaterialTheme.colorScheme.primary,
+                        cursorColor = MaterialTheme.colorScheme.primary
+                    )
+                )
+                HandDropdown(value = hand, onChange = { hand = it }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
+                Text(
+                    status,
+                    color = if (status.startsWith("Error:") || status.startsWith("Capture failed")) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+                if (status.contains("already in use") || status.contains("device index")) {
+                    FilledTonalButton(
+                        onClick = {
+                            openReady = false
+                            status = "Opening scanner…"
+                            palmManager.release()
+                            palmManager.open(scope) { openResult ->
+                                openReady = true
+                                when (openResult) {
+                                    is Result.Error -> status = "Error: ${(openResult as Result.Error).message}"
+                                    is Result.Success -> status = ""
+                                }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp).heightIn(min = 56.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.filledTonalButtonColors(containerColor = MaterialTheme.colorScheme.secondaryContainer, contentColor = MaterialTheme.colorScheme.onSecondaryContainer)
+                    ) { Text("Retry scanner") }
+                }
+            }
         }
         Spacer(Modifier.height(16.dp))
         Button(
@@ -99,10 +152,16 @@ fun EnrollmentScreen(
                 }
             },
             enabled = !loading && openReady && !status.startsWith("Error:"),
-            modifier = Modifier.heightIn(min = 88.dp)
+            modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
+            shape = RoundedCornerShape(8.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)
         ) { Text("Capture & Save") }
         Spacer(Modifier.height(8.dp))
-        TextButton(onClick = onBack, modifier = Modifier.heightIn(min = 68.dp)) { Text("Back") }
+        TextButton(
+            onClick = onBack,
+            modifier = Modifier.heightIn(min = 48.dp),
+            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.primary)
+        ) { Text("Back") }
     }
 }
 

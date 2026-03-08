@@ -7,4 +7,6 @@ export const env = {
   /** SupaSchool Supabase: URL and service role key for writing attendance/meal records from device. */
   SUPABASE_URL: process.env.SUPABASE_URL ?? '',
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
+  /** Public URL of this backend (e.g. https://your-app.up.railway.app). Returned to devices on activation so they use Supabase by default without manually entering the link. */
+  BACKEND_PUBLIC_URL: process.env.BACKEND_PUBLIC_URL ?? process.env.API_BASE_URL ?? '',
 };
