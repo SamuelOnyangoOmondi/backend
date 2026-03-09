@@ -26,4 +26,7 @@ interface StudentDao {
 
     @Delete
     suspend fun delete(entity: StudentEntity)
+
+    @Query("DELETE FROM students")
+    suspend fun deleteAll()
 }

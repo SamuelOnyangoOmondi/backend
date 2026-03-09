@@ -13,4 +13,7 @@ interface MealEventDao {
 
     @Query("UPDATE meal_events SET synced = 1 WHERE id IN (:ids)")
     suspend fun markSyncedBatch(ids: List<String>)
+
+    @Query("DELETE FROM meal_events")
+    suspend fun deleteAll()
 }

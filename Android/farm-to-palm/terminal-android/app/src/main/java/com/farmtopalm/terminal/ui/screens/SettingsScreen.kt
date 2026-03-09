@@ -16,6 +16,7 @@ fun SettingsScreen(
     mealRequiresPalm: Boolean,
     onMealRequiresPalmChange: (Boolean) -> Unit,
     onAdminPinChange: () -> Unit,
+    onClearLocalData: () -> Unit,
     onBack: () -> Unit
 ) {
     Column(Modifier.fillMaxSize().padding(24.dp)) {
@@ -50,6 +51,10 @@ fun SettingsScreen(
         }
         Spacer(Modifier.height(8.dp))
         TextButton(onClick = onAdminPinChange, modifier = Modifier.heightIn(min = 68.dp)) { Text("Change admin PIN") }
+        Spacer(Modifier.height(8.dp))
+        Text("Clear local data", style = MaterialTheme.typography.titleSmall)
+        Text("Remove all students, palm templates, attendance and meal events. Keeps activation. Use before re-syncing from Supa School.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        OutlinedButton(onClick = onClearLocalData, modifier = Modifier.padding(top = 4.dp), colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text("Clear local data") }
         Spacer(Modifier.height(16.dp))
         TextButton(onClick = onBack, modifier = Modifier.heightIn(min = 68.dp)) { Text("Back") }
     }

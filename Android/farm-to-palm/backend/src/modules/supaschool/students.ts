@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { getSupabase } from '../../supabase/client.js';
 import { terminalAuth } from '../../shared/middleware/auth.js';
+import { env } from '../../env.js';
 
 /**
  * GET /v1/supaschool/students
@@ -38,12 +39,12 @@ export default async function (app: FastifyInstance) {
         hint: 'Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to the Supa School project in backend .env',
       });
     }
-    const schoolId = (req as any).schoolId as string;
+    // Use SUPABASE_SCHOOL_ID if set (fixes Neon school_id ≠ Supabase school_id mismatch)
+    const schoolId = env.SUPABASE_SCHOOL_ID || ((req as any).schoolId as string);
     const { data, error } = await sb
       .from('students')
       .select('id, first_name, last_name, admission_number')
       .eq('school_id', schoolId)
-      .eq('is_active', true)
       .order('last_name', { ascending: true });
 
     if (error) {

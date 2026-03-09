@@ -26,4 +26,7 @@ interface PalmTemplateDao {
 
     @Query("DELETE FROM palm_templates WHERE studentId = :studentId")
     suspend fun deleteByStudent(studentId: String)
+
+    @Query("DELETE FROM palm_templates")
+    suspend fun deleteAll()
 }

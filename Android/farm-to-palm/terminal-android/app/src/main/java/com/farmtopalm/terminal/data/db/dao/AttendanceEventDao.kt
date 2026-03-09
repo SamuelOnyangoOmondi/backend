@@ -16,4 +16,7 @@ interface AttendanceEventDao {
 
     @Query("UPDATE attendance_events SET synced = 1 WHERE id IN (:ids)")
     suspend fun markSyncedBatch(ids: List<String>)
+
+    @Query("DELETE FROM attendance_events")
+    suspend fun deleteAll()
 }

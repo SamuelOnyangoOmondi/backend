@@ -317,6 +317,19 @@ class MainActivity : ComponentActivity() {
                                 mealRequiresPalm = mealRequiresPalm,
                                 onMealRequiresPalmChange = { mealRequiresPalm = it; prefs.edit().putBoolean("meal_requires_palm", it).apply() },
                                 onAdminPinChange = { },
+                                onClearLocalData = {
+                                    scope.launch {
+                                        withContext(Dispatchers.IO) {
+                                            db.studentDao().deleteAll()
+                                            db.palmTemplateDao().deleteAll()
+                                            db.attendanceEventDao().deleteAll()
+                                            db.mealEventDao().deleteAll()
+                                            db.nfcCardDao().deleteAll()
+                                        }
+                                        attendanceCount.value = 0
+                                        mealCount.value = 0
+                                    }
+                                },
                                 onBack = { route = "home" }
                             )
                         }

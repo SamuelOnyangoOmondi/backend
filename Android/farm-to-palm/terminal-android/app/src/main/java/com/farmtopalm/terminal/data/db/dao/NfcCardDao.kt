@@ -16,4 +16,7 @@ interface NfcCardDao {
 
     @Delete
     suspend fun delete(entity: NfcCardEntity)
+
+    @Query("DELETE FROM nfc_cards")
+    suspend fun deleteAll()
 }
