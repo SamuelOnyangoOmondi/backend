@@ -1,4 +1,11 @@
 import { getSupabase } from './client.js';
+import { env } from '../../env.js';
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function asUuidOrNull(s: string | null | undefined): string | null {
+  if (!s || typeof s !== 'string') return null;
+  return UUID_REGEX.test(s) ? s : null;
+}
 
 export type AttendanceEventItem = {
   eventId: string;
@@ -26,16 +33,17 @@ function getSupabaseStudentId(e: AttendanceEventItem): string | null {
  */
 export async function upsertAttendanceToSupabase(
   events: AttendanceEventItem[],
-  _schoolIdFromToken: string
+  schoolIdFromToken: string
 ): Promise<{ ok: boolean; error?: string }> {
   const sb = getSupabase();
   if (!sb) return { ok: true };
+
+  const schoolId = env.SUPABASE_SCHOOL_ID || schoolIdFromToken;
 
   const byKey = new Map<string, { student_id: string; school_id: string; attendance_date: string; device_id: string | null; recorded_at: string }>();
   for (const e of events) {
     const studentId = getSupabaseStudentId(e);
     if (!studentId) continue;
-    const schoolId = e.schoolId ?? _schoolIdFromToken;
     const attendanceDate = new Date(e.ts).toISOString().slice(0, 10);
     const key = `${studentId}:${attendanceDate}`;
     const recordedAt = new Date(e.ts).toISOString();
@@ -45,13 +53,18 @@ export async function upsertAttendanceToSupabase(
         student_id: studentId,
         school_id: schoolId,
         attendance_date: attendanceDate,
-        device_id: e.terminalId || null,
+        device_id: asUuidOrNull(e.terminalId),
         recorded_at: recordedAt,
       });
     }
   }
 
-  if (byKey.size === 0) return { ok: true };
+  if (byKey.size === 0) {
+    if (events.length > 0) {
+      return { ok: false, error: 'No valid Supabase student IDs in events. Device must run Sync students from Supa School first, then enroll palms.' };
+    }
+    return { ok: true };
+  }
 
   const rows = Array.from(byKey.values()).map((r) => ({
     student_id: r.student_id,

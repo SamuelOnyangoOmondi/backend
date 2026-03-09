@@ -10,6 +10,46 @@ import { env } from '../../env.js';
  * Requires Supabase to be configured (SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY).
  */
 export default async function (app: FastifyInstance) {
+  /** Test Supabase write: try inserting attendance + meal for a student. No auth. GET /v1/supaschool/test-write?student_id=UUID&school_id=UUID */
+  app.get('/v1/supaschool/test-write', async (req: FastifyRequest, reply: FastifyReply) => {
+    const q = (req.query as Record<string, string | undefined>) ?? {};
+    const studentId = q.student_id;
+    const schoolId = q.school_id || env.SUPABASE_SCHOOL_ID;
+    if (!studentId || !schoolId) {
+      return reply.status(400).send({
+        error: 'Missing student_id or school_id',
+        hint: 'Add ?student_id=<uuid>&school_id=<uuid> (or set SUPABASE_SCHOOL_ID in .env)',
+      });
+    }
+    const sb = getSupabase();
+    if (!sb) {
+      return reply.send({ ok: false, error: 'Supabase not configured' });
+    }
+    const today = new Date().toISOString().slice(0, 10);
+    const now = new Date().toISOString();
+    try {
+      const { error: attErr } = await sb.from('attendance_records').upsert(
+        { student_id: studentId, school_id: schoolId, attendance_date: today, status: 'present', source: 'farm_to_feed', recorded_at: now },
+        { onConflict: 'student_id,attendance_date', ignoreDuplicates: false }
+      );
+      const { error: mealErr } = await sb.from('meal_records').upsert(
+        { student_id: studentId, school_id: schoolId, meal_date: today, meal_type: 'lunch', served: true, source: 'farm_to_feed', recorded_at: now },
+        { onConflict: 'student_id,meal_date,meal_type', ignoreDuplicates: false }
+      );
+      if (attErr || mealErr) {
+        return reply.send({
+          ok: false,
+          attendanceError: attErr?.message ?? null,
+          mealError: mealErr?.message ?? null,
+          hint: 'Check that student_id and school_id exist in Supabase (students.id, schools.id). Run Sync students from Supa School on device first.',
+        });
+      }
+      return reply.send({ ok: true, message: 'Test write succeeded. Check SupaSchool student profile.' });
+    } catch (e: any) {
+      return reply.status(500).send({ ok: false, error: e?.message ?? String(e) });
+    }
+  });
+
   /** Debug endpoint: test Supabase connection. No auth. GET /v1/supaschool/debug */
   app.get('/v1/supaschool/debug', async (_req: FastifyRequest, reply: FastifyReply) => {
     try {

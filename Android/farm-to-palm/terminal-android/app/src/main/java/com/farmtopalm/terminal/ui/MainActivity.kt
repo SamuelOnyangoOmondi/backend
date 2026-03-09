@@ -314,7 +314,13 @@ class MainActivity : ComponentActivity() {
                             val unsyncedM = remember { mutableStateOf(0) }
                             var syncStudentsMessage by remember { mutableStateOf<String?>(null) }
                             var syncStudentsLoading by remember { mutableStateOf(false) }
-                            LaunchedEffect(Unit) { unsyncedA.value = eventRepo.getUnsyncedAttendance().size; unsyncedM.value = eventRepo.getUnsyncedMeals().size }
+                            LaunchedEffect(Unit) {
+                                val (a, m) = withContext(Dispatchers.IO) {
+                                    eventRepo.getUnsyncedAttendance().size to eventRepo.getUnsyncedMeals().size
+                                }
+                                unsyncedA.value = a
+                                unsyncedM.value = m
+                            }
                             SyncStatusScreen(
                                 unsyncedAttendance = unsyncedA.value,
                                 unsyncedMeals = unsyncedM.value,
@@ -345,6 +351,19 @@ class MainActivity : ComponentActivity() {
                                 },
                                 syncStudentsMessage = syncStudentsMessage,
                                 syncStudentsLoading = syncStudentsLoading,
+                                onRefreshCounts = {
+                                    scope.launch {
+                                        withContext(Dispatchers.IO) {
+                                            val (a, m) = eventRepo.getUnsyncedAttendance().size to eventRepo.getUnsyncedMeals().size
+                                            val cfg = terminalRepo.getConfig()
+                                            withContext(Dispatchers.Main) {
+                                                unsyncedA.value = a
+                                                unsyncedM.value = m
+                                                if (cfg != null) config.value = cfg
+                                            }
+                                        }
+                                    }
+                                },
                                 onBack = { route = "home" }
                             )
                         } ?: run { route = "home" }

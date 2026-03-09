@@ -34,6 +34,7 @@ import {
   AlertCircle,
   Fingerprint,
   ShieldCheck,
+  UtensilsCrossed,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
@@ -56,12 +57,13 @@ const StudentProfileView: React.FC<StudentProfileViewProps> = ({
     { id: string; attendance_date: string; status: string; notes: string | null; source?: string; recorded_at?: string; created_at?: string }[]
   >([]);
   const [mealRecords, setMealRecords] = useState<
-    { id: string; meal_date: string; meal_type: string; source?: string; recorded_at?: string; created_at?: string }[]
+    { id: string; meal_date: string; meal_type: string; served?: boolean; source?: string; recorded_at?: string; created_at?: string }[]
   >([]);
   const [palmEnrollment, setPalmEnrollment] = useState<{
     enrolled_at: string;
   } | null>(null);
   const [attendanceLoading, setAttendanceLoading] = useState(true);
+  const [mealsLoading, setMealsLoading] = useState(true);
   const [palmLoading, setPalmLoading] = useState(true);
 
   useEffect(() => {
@@ -78,7 +80,7 @@ const StudentProfileView: React.FC<StudentProfileViewProps> = ({
             .limit(50),
           supabase
             .from("meal_records")
-            .select("id, meal_date, meal_type, source, recorded_at, created_at")
+            .select("id, meal_date, meal_type, served, source, recorded_at, created_at")
             .eq("student_id", studentId)
             .order("meal_date", { ascending: false })
             .limit(50),
@@ -96,15 +98,45 @@ const StudentProfileView: React.FC<StudentProfileViewProps> = ({
       } finally {
         if (isMounted) {
           setAttendanceLoading(false);
+          setMealsLoading(false);
           setPalmLoading(false);
         }
       }
     };
     load();
-    const interval = setInterval(load, 10000);
+
+    // Supabase Realtime: refetch immediately when attendance or meal records change
+    const channel = supabase
+      .channel(`student-profile-${studentId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "attendance_records",
+          filter: `student_id=eq.${studentId}`,
+        },
+        () => load()
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "meal_records",
+          filter: `student_id=eq.${studentId}`,
+        },
+        () => load()
+      )
+      .subscribe();
+
+    // Fallback: poll every 3s in case Realtime isn't enabled for these tables
+    const interval = setInterval(load, 3000);
+
     return () => {
       isMounted = false;
       clearInterval(interval);
+      supabase.removeChannel(channel);
     };
   }, [studentId]);
 
@@ -137,7 +169,7 @@ const StudentProfileView: React.FC<StudentProfileViewProps> = ({
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="info">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1">
               <TabsTrigger value="info" className="flex items-center gap-2">
                 <User className="h-4 w-4" />
                 <span>Personal Info</span>
@@ -145,6 +177,10 @@ const StudentProfileView: React.FC<StudentProfileViewProps> = ({
               <TabsTrigger value="attendance" className="flex items-center gap-2">
                 <Clock className="h-4 w-4" />
                 <span>Attendance</span>
+              </TabsTrigger>
+              <TabsTrigger value="meals" className="flex items-center gap-2">
+                <UtensilsCrossed className="h-4 w-4" />
+                <span>Meals</span>
               </TabsTrigger>
               <TabsTrigger value="academics" className="flex items-center gap-2">
                 <BookOpen className="h-4 w-4" />
@@ -362,6 +398,73 @@ const StudentProfileView: React.FC<StudentProfileViewProps> = ({
                               )}
                             </TableCell>
                             <TableCell>{record.notes ?? "—"}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Meals Tab */}
+            <TabsContent value="meals" className="pt-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Meal Records</CardTitle>
+                  <CardDescription>Meals taken by this student (from Farm-to-Palm device and manual entries)</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {mealsLoading ? (
+                    <div className="py-8 text-center text-muted-foreground text-sm">
+                      Loading meals…
+                    </div>
+                  ) : mealRecords.length === 0 ? (
+                    <div className="py-8 text-center text-muted-foreground text-sm">
+                      No meal records yet.
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Time</TableHead>
+                          <TableHead>Meal Type</TableHead>
+                          <TableHead>Served</TableHead>
+                          <TableHead>Source</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {mealRecords.map((record) => (
+                          <TableRow key={record.id}>
+                            <TableCell>
+                              {new Date(record.meal_date).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell>
+                              {(record.recorded_at ?? record.created_at)
+                                ? new Date(record.recorded_at ?? record.created_at!).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+                                : "—"}
+                            </TableCell>
+                            <TableCell className="capitalize">
+                              {record.meal_type || "—"}
+                            </TableCell>
+                            <TableCell>
+                              {record.served !== false ? (
+                                <div className="flex items-center">
+                                  <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
+                                  <span>Yes</span>
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground">No</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {record.source === "farm_to_feed" ? (
+                                <span className="text-muted-foreground">Device</span>
+                              ) : (
+                                record.source ?? "—"
+                              )}
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>

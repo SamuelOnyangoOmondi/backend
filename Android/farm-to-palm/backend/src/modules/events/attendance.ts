@@ -32,7 +32,8 @@ export default async function (app: FastifyInstance) {
     }
     const supabaseResult = await upsertAttendanceToSupabase(parsed.data.events, schoolIdFromToken);
     if (!supabaseResult.ok) {
-      req.log?.warn({ err: supabaseResult.error }, 'Supabase attendance upsert failed');
+      req.log?.error({ err: supabaseResult.error, eventCount: parsed.data.events.length }, 'Supabase attendance upsert failed - SupaSchool will not show records');
+      // Still return 200 so device marks as synced; data is in Knex. Fix SupaSchool config separately.
     }
     return reply.send({ count: parsed.data.events.length });
   });

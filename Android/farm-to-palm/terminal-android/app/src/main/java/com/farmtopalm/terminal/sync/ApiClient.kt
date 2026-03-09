@@ -42,9 +42,11 @@ class ApiClient(
     suspend fun postAttendanceBulk(events: List<AttendanceEventEntity>, externalIdByStudentId: (String) -> String?): Result<Unit> = withContext(Dispatchers.IO) {
         val arr = JSONArray()
         events.forEach { e ->
+            val extId = externalIdByStudentId(e.studentId)
             arr.put(JSONObject().apply {
                 put("eventId", e.id)
-                put("externalId", externalIdByStudentId(e.studentId))
+                put("studentId", e.studentId)
+                put("externalId", if (extId != null) extId else JSONObject.NULL)
                 put("terminalId", e.terminalId)
                 put("schoolId", e.schoolId)
                 put("ts", e.ts)
@@ -57,9 +59,11 @@ class ApiClient(
     suspend fun postMealsBulk(events: List<MealEventEntity>, externalIdByStudentId: (String) -> String?): Result<Unit> = withContext(Dispatchers.IO) {
         val arr = JSONArray()
         events.forEach { e ->
+            val extId = externalIdByStudentId(e.studentId)
             arr.put(JSONObject().apply {
                 put("eventId", e.id)
-                put("externalId", externalIdByStudentId(e.studentId))
+                put("studentId", e.studentId)
+                put("externalId", if (extId != null) extId else JSONObject.NULL)
                 put("terminalId", e.terminalId)
                 put("schoolId", e.schoolId)
                 put("ts", e.ts)
@@ -126,10 +130,15 @@ class ApiClient(
             .build()
         return try {
             val response = client.newCall(request).execute()
+            val bodyStr = response.body?.string() ?: ""
             if (response.isSuccessful) Result.Success(Unit)
             else {
-                Logger.e("API error: ${response.code} ${response.body?.string()}")
-                Result.Error("HTTP ${response.code}")
+                Logger.e("API error: ${response.code} $bodyStr")
+                val detail = try {
+                    val json = JSONObject(bodyStr)
+                    json.optString("details", json.optString("error", "")).takeIf { it.isNotBlank() }
+                } catch (_: Exception) { null }
+                Result.Error(if (detail != null) "HTTP ${response.code}: $detail" else "HTTP ${response.code}")
             }
         } catch (e: Exception) {
             Logger.e("API request failed", e)
