@@ -1,5 +1,6 @@
 package com.farmtopalm.terminal.sync
 
+import android.util.Base64
 import com.farmtopalm.terminal.data.db.entities.AttendanceEventEntity
 import com.farmtopalm.terminal.data.db.entities.MealEventEntity
 import com.farmtopalm.terminal.util.Logger
@@ -66,6 +67,27 @@ class ApiClient(
             })
         }
         tryPrimaryThenFallback { postWithUrl(it, "/v1/events/meals/bulk", JSONObject().put("events", arr).toString()) }
+    }
+
+    /**
+     * Sync palm template to backend immediately after enrollment.
+     * Sends raw rgb/ir as base64; backend encrypts and stores, writes status to Supabase.
+     */
+    suspend fun postPalmSync(
+        externalId: String,
+        hand: String,
+        rgb: ByteArray,
+        ir: ByteArray,
+        quality: Int
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        val body = JSONObject().apply {
+            put("externalId", externalId)
+            put("hand", hand)
+            put("rgbEnc", Base64.encodeToString(rgb, Base64.NO_WRAP))
+            put("irEnc", Base64.encodeToString(ir, Base64.NO_WRAP))
+            put("quality", quality)
+        }
+        tryPrimaryThenFallback { postWithUrl(it, "/v1/students/palm", body.toString()) }
     }
 
     /**

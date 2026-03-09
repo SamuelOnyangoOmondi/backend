@@ -18,6 +18,15 @@ interface PalmTemplateDao {
     @Query("SELECT * FROM palm_templates")
     suspend fun getAllSync(): List<PalmTemplateEntity>
 
+    @Query("SELECT DISTINCT studentId FROM palm_templates")
+    suspend fun getEnrolledStudentIds(): List<String>
+
+    @Query("SELECT * FROM palm_templates WHERE synced = 0")
+    suspend fun getUnsynced(): List<PalmTemplateEntity>
+
+    @Query("UPDATE palm_templates SET synced = 1 WHERE id = :id")
+    suspend fun markSynced(id: String)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(entity: PalmTemplateEntity)
 

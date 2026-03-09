@@ -32,6 +32,8 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
+  Fingerprint,
+  ShieldCheck,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
@@ -51,24 +53,51 @@ const StudentProfileView: React.FC<StudentProfileViewProps> = ({
 }) => {
   const student = students.find((s) => s.id === studentId);
   const [attendanceRecords, setAttendanceRecords] = useState<
-    { id: string; attendance_date: string; status: string; notes: string | null }[]
+    { id: string; attendance_date: string; status: string; notes: string | null; source?: string }[]
   >([]);
+  const [mealRecords, setMealRecords] = useState<
+    { id: string; meal_date: string; meal_type: string; source?: string }[]
+  >([]);
+  const [palmEnrollment, setPalmEnrollment] = useState<{
+    enrolled_at: string;
+  } | null>(null);
   const [attendanceLoading, setAttendanceLoading] = useState(true);
+  const [palmLoading, setPalmLoading] = useState(true);
 
   useEffect(() => {
     if (!studentId) return;
     let isMounted = true;
     (async () => {
       try {
-        const { data } = await supabase
-          .from("attendance_records")
-          .select("id, attendance_date, status, notes")
-          .eq("student_id", studentId)
-          .order("attendance_date", { ascending: false })
-          .limit(50);
-        if (isMounted) setAttendanceRecords(data ?? []);
+        const [attRes, mealRes, palmRes] = await Promise.all([
+          supabase
+            .from("attendance_records")
+            .select("id, attendance_date, status, notes, source")
+            .eq("student_id", studentId)
+            .order("attendance_date", { ascending: false })
+            .limit(50),
+          supabase
+            .from("meal_records")
+            .select("id, meal_date, meal_type, source")
+            .eq("student_id", studentId)
+            .order("meal_date", { ascending: false })
+            .limit(50),
+          supabase
+            .from("palm_enrollment")
+            .select("enrolled_at")
+            .eq("student_id", studentId)
+            .maybeSingle(),
+        ]);
+        if (isMounted) {
+          setAttendanceRecords(attRes.data ?? []);
+          setMealRecords(mealRes.data ?? []);
+          setPalmEnrollment(palmRes.data);
+        }
       } finally {
-        if (isMounted) setAttendanceLoading(false);
+        if (isMounted) {
+          setAttendanceLoading(false);
+          setPalmLoading(false);
+        }
       }
     })();
     return () => {
@@ -126,6 +155,70 @@ const StudentProfileView: React.FC<StudentProfileViewProps> = ({
 
             {/* Personal Information Tab */}
             <TabsContent value="info" className="pt-4 space-y-6">
+              {/* Biometric (Palm) Status - secret, no template data */}
+              <Card className="border-primary/20">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Fingerprint className="h-5 w-5" />
+                    Biometric Status
+                  </CardTitle>
+                  <CardDescription>
+                    Palm enrollment status from Farm-to-Palm device. Template data is stored securely and never displayed.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {palmLoading ? (
+                    <p className="text-sm text-muted-foreground">Loading…</p>
+                  ) : palmEnrollment ? (
+                    <div className="flex items-center gap-2 text-green-600 dark:text-green-500">
+                      <ShieldCheck className="h-5 w-5" />
+                      <span className="font-medium">Palm registered</span>
+                      <span className="text-muted-foreground text-sm">
+                        (enrolled {new Date(palmEnrollment.enrolled_at).toLocaleDateString()})
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Fingerprint className="h-5 w-5" />
+                      <span>Palm not yet registered</span>
+                    </div>
+                  )}
+                  {/* Recent palm scans (attendance + meals from device) */}
+                  {(attendanceRecords.some((r) => r.source === "farm_to_feed") ||
+                    mealRecords.some((r) => r.source === "farm_to_feed")) && (
+                    <div className="mt-4 pt-4 border-t">
+                      <p className="text-sm font-medium text-muted-foreground mb-2">Recent palm scans</p>
+                      <div className="space-y-1 text-sm">
+                        {[
+                          ...attendanceRecords
+                            .filter((r) => r.source === "farm_to_feed")
+                            .slice(0, 5)
+                            .map((r) => ({
+                              date: r.attendance_date,
+                              type: "Attendance",
+                            })),
+                          ...mealRecords
+                            .filter((r) => r.source === "farm_to_feed")
+                            .slice(0, 5)
+                            .map((r) => ({
+                              date: r.meal_date,
+                              type: r.meal_type || "Meal",
+                            })),
+                        ]
+                          .sort((a, b) => b.date.localeCompare(a.date))
+                          .slice(0, 5)
+                          .map((s, i) => (
+                            <div key={i} className="flex justify-between">
+                              <span>{new Date(s.date).toLocaleDateString()}</span>
+                              <span className="text-muted-foreground">{s.type}</span>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Card>
                   <CardHeader>

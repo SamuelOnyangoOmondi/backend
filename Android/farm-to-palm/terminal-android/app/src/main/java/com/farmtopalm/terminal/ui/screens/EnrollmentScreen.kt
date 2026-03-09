@@ -25,6 +25,7 @@ fun EnrollmentScreen(
     students: List<StudentEntity>,
     searchQuery: String,
     onSearchChange: (String) -> Unit,
+    preselectedStudentId: String? = null,
     onRequestPin: (onVerified: () -> Unit) -> Unit,
     onSaveTemplate: (externalId: String, name: String, hand: String, rgb: ByteArray, ir: ByteArray, quality: Int, streamType: String?, rgbModelHash: String?, irModelHash: String?, sdkTemplateId: String?, onSaved: () -> Unit) -> Unit,
     onBack: () -> Unit,
@@ -33,6 +34,11 @@ fun EnrollmentScreen(
     syncStudentsLoading: Boolean = false
 ) {
     var selectedStudent by remember { mutableStateOf<StudentEntity?>(null) }
+    LaunchedEffect(students, preselectedStudentId) {
+        if (preselectedStudentId != null) {
+            selectedStudent = students.find { it.id == preselectedStudentId }
+        }
+    }
     var hand by remember { mutableStateOf("left") }
     var status by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(false) }

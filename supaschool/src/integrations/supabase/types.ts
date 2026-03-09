@@ -416,6 +416,32 @@ export type Database = {
         }
         Relationships: []
       }
+      palm_enrollment: {
+        Row: {
+          id: string
+          student_id: string
+          enrolled_at: string
+          device_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          student_id: string
+          enrolled_at?: string
+          device_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          student_id?: string
+          enrolled_at?: string
+          device_id?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          { foreignKeyName: "palm_enrollment_student_id_fkey"; columns: ["student_id"]; referencedRelation: "students"; referencedColumns: ["id"] }
+        ]
+      }
       sync_events: {
         Row: {
           id: string

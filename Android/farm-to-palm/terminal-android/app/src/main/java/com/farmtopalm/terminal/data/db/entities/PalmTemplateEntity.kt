@@ -8,7 +8,7 @@ import androidx.room.PrimaryKey
 @Entity(
     tableName = "palm_templates",
     foreignKeys = [ForeignKey(entity = StudentEntity::class, parentColumns = ["id"], childColumns = ["studentId"], onDelete = ForeignKey.CASCADE)],
-    indices = [Index("studentId"), Index("sdkTemplateId")]
+    indices = [Index("studentId"), Index("sdkTemplateId"), Index("synced")]
 )
 data class PalmTemplateEntity(
     @PrimaryKey val id: String,
@@ -18,6 +18,8 @@ data class PalmTemplateEntity(
     val irFeatureEnc: ByteArray,
     val quality: Int,
     val createdAt: Long,
+    /** True if synced to backend (and thus SupaSchool palm_enrollment). */
+    val synced: Boolean = false,
     /** Stream type at enrollment (e.g. "RGB_IR", "IR"); null = legacy row. */
     val streamType: String? = null,
     /** Model hash at enrollment for RGB; null = legacy. */
@@ -27,6 +29,6 @@ data class PalmTemplateEntity(
     /** SDK internal template ID from register-mode capture; used for identify-mode match lookup. */
     val sdkTemplateId: String? = null
 ) {
-    override fun equals(other: Any?): Boolean = this === other || (other is PalmTemplateEntity && id == other.id && studentId == other.studentId && hand == other.hand && rgbFeatureEnc.contentEquals(other.rgbFeatureEnc) && irFeatureEnc.contentEquals(other.irFeatureEnc) && quality == other.quality && createdAt == other.createdAt && streamType == other.streamType && rgbModelHash == other.rgbModelHash && irModelHash == other.irModelHash && sdkTemplateId == other.sdkTemplateId)
+    override fun equals(other: Any?): Boolean = this === other || (other is PalmTemplateEntity && id == other.id && studentId == other.studentId && hand == other.hand && rgbFeatureEnc.contentEquals(other.rgbFeatureEnc) && irFeatureEnc.contentEquals(other.irFeatureEnc) && quality == other.quality && createdAt == other.createdAt && synced == other.synced && streamType == other.streamType && rgbModelHash == other.rgbModelHash && irModelHash == other.irModelHash && sdkTemplateId == other.sdkTemplateId)
     override fun hashCode(): Int = id.hashCode()
 }

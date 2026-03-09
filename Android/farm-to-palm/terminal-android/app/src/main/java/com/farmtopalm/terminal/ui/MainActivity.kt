@@ -70,6 +70,7 @@ class MainActivity : ComponentActivity() {
                     var route by remember { mutableStateOf("") }
                     var showPinDialog by remember { mutableStateOf(false) }
                     var pinVerified by remember { mutableStateOf(false) }
+                    var enrollmentPreselectedStudentId by remember { mutableStateOf<String?>(null) }
                     var nfcUid by remember { nfcUidState }
                     val scope = rememberCoroutineScope()
                     val config = remember { mutableStateOf<com.farmtopalm.terminal.data.db.entities.TerminalConfigEntity?>(null) }
@@ -116,7 +117,7 @@ class MainActivity : ComponentActivity() {
                                 todayMealCount = mealCount.value,
                                 onAttendance = { route = "attendance" },
                                 onMeal = { route = "meal" },
-                                onEnrollment = { showPinDialog = true; route = "enrollment" },
+                                onEnrollment = { enrollmentPreselectedStudentId = null; showPinDialog = true; route = "enrollment" },
                                 onStudents = { route = "students" },
                                 onSyncStatus = { route = "sync" },
                                 onDeviceStatus = { route = "device" },
@@ -160,6 +161,7 @@ class MainActivity : ComponentActivity() {
                                 students = enrollStudents.value,
                                 searchQuery = enrollQuery,
                                 onSearchChange = { enrollQuery = it },
+                                preselectedStudentId = enrollmentPreselectedStudentId,
                                 onRequestPin = { },
                                 onSaveTemplate = { extId, studentName, hand, rgb, ir, quality, streamType, rgbModelHash, irModelHash, sdkTemplateId, onSaved ->
                                 scope.launch {
@@ -179,12 +181,27 @@ class MainActivity : ComponentActivity() {
                                             templateId, student.id, handNorm, encRgb, encIr, quality, System.currentTimeMillis(),
                                             streamType = streamType, rgbModelHash = rgbModelHash, irModelHash = irModelHash, sdkTemplateId = sdkTemplateId
                                         ))
+                                        // Sync palm to backend immediately so SupaSchool profile shows status
+                                        val tokenBytes = try { Crypto.decrypt(ctx, c.tokenEnc) } catch (e: Exception) { null }
+                                        if (tokenBytes != null) {
+                                            val client = ApiClient(c.apiBaseUrl, c.apiBaseUrlFallback, String(tokenBytes))
+                                            when (val syncResult = client.postPalmSync(extId, handNorm, rgb, ir, quality)) {
+                                                is com.farmtopalm.terminal.util.Result.Success -> {
+                                                    db.palmTemplateDao().markSynced(templateId)
+                                                    Logger.d("PalmEnroll: synced to backend")
+                                                }
+                                                is com.farmtopalm.terminal.util.Result.Error -> {
+                                                    Logger.w("PalmEnroll: backend sync failed: ${syncResult.message} (will retry in background)")
+                                                    SyncScheduler.runNow(ctx)
+                                                }
+                                            }
+                                        }
                                     } finally {
                                         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { onSaved() }
                                     }
                                 }
                             },
-                            onBack = { route = "home"; pinVerified = false },
+                            onBack = { route = "home"; pinVerified = false; enrollmentPreselectedStudentId = null },
                             onSyncStudents = {
                                 scope.launch {
                                     enrollSyncLoading = true
@@ -218,8 +235,31 @@ class MainActivity : ComponentActivity() {
                         route == "students" -> config.value?.let { c ->
                             var query by remember { mutableStateOf("") }
                             val students = remember(query, c.schoolId) { mutableStateOf<List<com.farmtopalm.terminal.data.db.entities.StudentEntity>>(emptyList()) }
-                            LaunchedEffect(query, c.schoolId) { students.value = studentRepo.search(c.schoolId, query).first() }
-                            StudentsScreen(schoolId = c.schoolId, students = students.value, searchQuery = query, onSearchChange = { query = it }, onBack = { route = "home" })
+                            val totalCount = remember { mutableStateOf(0) }
+                            val enrolledIds = remember { mutableStateOf<Set<String>>(emptySet()) }
+                            val studentsLoading = remember { mutableStateOf(true) }
+                            LaunchedEffect(query, c.schoolId) {
+                                studentsLoading.value = true
+                                students.value = studentRepo.search(c.schoolId, query).first()
+                                studentsLoading.value = false
+                            }
+                            LaunchedEffect(route) {
+                                if (route == "students") {
+                                    enrolledIds.value = db.palmTemplateDao().getEnrolledStudentIds().toSet()
+                                    totalCount.value = studentRepo.search(c.schoolId, "").first().size
+                                }
+                            }
+                            StudentsScreen(
+                                schoolId = c.schoolId,
+                                students = students.value,
+                                enrolledStudentIds = enrolledIds.value,
+                                totalStudentCount = totalCount.value,
+                                searchQuery = query,
+                                onSearchChange = { query = it },
+                                onBack = { route = "home" },
+                                onRegisterPalm = { s -> enrollmentPreselectedStudentId = s.id; showPinDialog = true; route = "enrollment" },
+                                isLoading = studentsLoading.value
+                            )
                         } ?: run { route = "home" }
                         route == "attendance_list" -> config.value?.let { c ->
                             val rows = remember { mutableStateOf<List<AttendanceRowUi>>(emptyList()) }

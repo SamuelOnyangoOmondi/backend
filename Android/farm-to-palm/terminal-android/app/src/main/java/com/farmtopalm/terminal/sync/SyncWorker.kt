@@ -52,6 +52,19 @@ class SyncWorker(
                 is com.farmtopalm.terminal.util.Result.Error -> ok = false
             }
         }
+        // Sync unsynced palm templates so SupaSchool profile shows "Palm registered"
+        val unsyncedPalms = db.palmTemplateDao().getUnsynced()
+        for (palm in unsyncedPalms) {
+            val extId = studentDao.getById(palm.studentId)?.externalId ?: palm.studentId
+            val rgb = try { com.farmtopalm.terminal.data.crypto.Crypto.decrypt(applicationContext, palm.rgbFeatureEnc) } catch (e: Exception) { null }
+            val ir = try { com.farmtopalm.terminal.data.crypto.Crypto.decrypt(applicationContext, palm.irFeatureEnc) } catch (e: Exception) { null }
+            if (rgb != null && ir != null) {
+                when (client.postPalmSync(extId, palm.hand, rgb, ir, palm.quality)) {
+                    is com.farmtopalm.terminal.util.Result.Success -> db.palmTemplateDao().markSynced(palm.id)
+                    is com.farmtopalm.terminal.util.Result.Error -> ok = false
+                }
+            }
+        }
         if (ok) terminalRepo.updateHeartbeat()
         return if (ok) Result.success() else Result.retry()
     }

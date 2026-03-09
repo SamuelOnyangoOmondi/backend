@@ -26,6 +26,15 @@ export const palmBody = z.object({
   quality: z.number().int().min(0).max(100),
 });
 
+/** Palm sync from device: uses externalId (Supabase student id) */
+export const palmSyncBody = z.object({
+  externalId: z.string().uuid(),
+  hand: z.string(),
+  rgbEnc: z.string(),
+  irEnc: z.string(),
+  quality: z.number().int().min(0).max(100),
+});
+
 export const nfcBody = z.object({
   uid: z.string().min(1),
 });
