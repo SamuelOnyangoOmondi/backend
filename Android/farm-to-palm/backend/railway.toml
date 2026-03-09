@@ -1,13 +1,2 @@
-# Railway config when this folder is set as Root Directory.
-# In Railway: backend service → Settings → Source → Root Directory = Android/farm-to-palm/backend
-
-[build]
-builder = "nixpacks"
-buildCommand = "npm run build"
-watchPatterns = ["src/**", "package.json", "tsconfig.json", "knexfile.cjs"]
-
-[deploy]
-# Run migrate first; if it fails, still start app (migrations may already be applied)
-startCommand = "npm run migrate || true; npm start"
-restartPolicyType = "on_failure"
-restartPolicyMaxRetries = 3
+# Railway: use Dockerfile (do not override with Nixpacks).
+# Root Directory should be empty for backend-only repo.
