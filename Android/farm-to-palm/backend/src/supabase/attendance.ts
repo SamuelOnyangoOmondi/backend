@@ -40,21 +40,20 @@ export async function upsertAttendanceToSupabase(
 
   const schoolId = env.SUPABASE_SCHOOL_ID || schoolIdFromToken;
 
-  const byKey = new Map<string, { student_id: string; school_id: string; attendance_date: string; device_id: string | null; recorded_at: string }>();
+  const byKey = new Map<string, { student_id: string; school_id: string; attendance_date: string; device_id: string | null; ts: number }>();
   for (const e of events) {
     const studentId = getSupabaseStudentId(e);
     if (!studentId) continue;
     const attendanceDate = new Date(e.ts).toISOString().slice(0, 10);
     const key = `${studentId}:${attendanceDate}`;
-    const recordedAt = new Date(e.ts).toISOString();
     const existing = byKey.get(key);
-    if (!existing || e.ts > new Date(existing.recorded_at).getTime()) {
+    if (!existing || e.ts > existing.ts) {
       byKey.set(key, {
         student_id: studentId,
         school_id: schoolId,
         attendance_date: attendanceDate,
         device_id: asUuidOrNull(e.terminalId),
-        recorded_at: recordedAt,
+        ts: e.ts,
       });
     }
   }
@@ -76,7 +75,6 @@ export async function upsertAttendanceToSupabase(
     recorded_by: null,
     source: 'farm_to_feed' as const,
     device_id: r.device_id,
-    recorded_at: r.recorded_at,
   }));
 
   const { error } = await sb
