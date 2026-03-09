@@ -9,6 +9,27 @@ import { terminalAuth } from '../../shared/middleware/auth.js';
  * Requires Supabase to be configured (SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY).
  */
 export default async function (app: FastifyInstance) {
+  /** Debug endpoint: test Supabase connection. No auth. GET /v1/supaschool/debug */
+  app.get('/v1/supaschool/debug', async (_req: FastifyRequest, reply: FastifyReply) => {
+    const sb = getSupabase();
+    if (!sb) {
+      return reply.send({
+        ok: false,
+        error: 'Supabase not configured',
+        hint: 'Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in Railway Variables',
+      });
+    }
+    const { data: schools, error: schoolsErr } = await sb.from('schools').select('id, name').limit(5);
+    const { data: studentsSample, error: studentsErr } = await sb.from('students').select('id, school_id, first_name').limit(2);
+    return reply.send({
+      ok: !schoolsErr && !studentsErr,
+      schoolsError: schoolsErr ? { message: schoolsErr.message, code: schoolsErr.code } : null,
+      studentsError: studentsErr ? { message: studentsErr.message, code: studentsErr.code } : null,
+      schoolsCount: schools?.length ?? 0,
+      studentsSample: studentsSample ?? [],
+    });
+  });
+
   app.get('/v1/supaschool/students', { preHandler: terminalAuth }, async (req: FastifyRequest, reply: FastifyReply) => {
     const sb = getSupabase();
     if (!sb) {
