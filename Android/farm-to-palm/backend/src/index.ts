@@ -8,6 +8,7 @@ import activate from './modules/terminals/activate.js';
 import heartbeat from './modules/terminals/heartbeat.js';
 import students from './modules/students/students.js';
 import palm from './modules/biometrics/palm.js';
+import edcc from './modules/biometrics/edcc.js';
 import nfc from './modules/students/nfc.js';
 import attendanceBulk from './modules/events/attendance.js';
 import mealsBulk from './modules/events/meals.js';
@@ -25,6 +26,7 @@ async function main() {
   await app.register(heartbeat);
   await app.register(students);
   await app.register(palm);
+  await app.register(edcc);
   await app.register(nfc);
   await app.register(attendanceBulk);
   await app.register(mealsBulk);

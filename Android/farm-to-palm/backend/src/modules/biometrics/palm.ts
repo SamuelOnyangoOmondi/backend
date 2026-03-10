@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { db } from '../../db/knex.js';
-import { palmBody, palmSyncBody } from '../../shared/validation/schemas.js';
+import { palmBody, palmScanEventBody, palmSyncBody } from '../../shared/validation/schemas.js';
 import { terminalAuth } from '../../shared/middleware/auth.js';
 import { upsertPalmEnrollmentToSupabase } from '../../supabase/palm.js';
 import crypto from 'crypto';
@@ -64,6 +64,34 @@ export default async function (app: FastifyInstance) {
     }
 
     return reply.send({ id: palmId });
+  });
+
+  /**
+   * Log a palm scan attempt (local device match or EDCC remote match).
+   * This enables unified audit reporting in `palm_scan_events`.
+   */
+  app.post('/v1/biometrics/palm/scan-event', { preHandler: terminalAuth }, async (req: FastifyRequest, reply: FastifyReply) => {
+    const parsed = palmScanEventBody.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: 'Invalid body', details: parsed.error.message });
+    }
+    const terminalId = (req as any).terminalId;
+    const schoolId = (req as any).schoolId;
+    const now = Date.now();
+    const { matchStatus, studentId, externalId, confidence, source, ts } = parsed.data;
+
+    await db('palm_scan_events').insert({
+      terminal_id: terminalId,
+      school_id: schoolId,
+      ts: ts ?? now,
+      match_status: matchStatus,
+      student_id: studentId ?? null,
+      external_id: externalId ?? null,
+      confidence: confidence ?? null,
+      source,
+    });
+
+    return reply.send({ ok: true });
   });
 }
 

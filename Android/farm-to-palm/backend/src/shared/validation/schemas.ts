@@ -26,13 +26,55 @@ export const palmBody = z.object({
   quality: z.number().int().min(0).max(100),
 });
 
-/** Palm sync from device: uses externalId (Supabase student id) */
+/** Palm sync from device: uses externalId (Supabase student id or admission number) */
 export const palmSyncBody = z.object({
-  externalId: z.string().uuid(),
+  externalId: z.string().min(1),
   hand: z.string(),
   rgbEnc: z.string(),
   irEnc: z.string(),
   quality: z.number().int().min(0).max(100),
+});
+
+/** EDCC health-check: raw images for service validation */
+export const edccHealthCheckBody = z.object({
+  rgbImage: z.string(), // base64
+  irImage: z.string(),
+  rgbFormat: z.string().nullable().optional(),
+  irFormat: z.string().nullable().optional(),
+});
+
+/** EDCC enroll: palm template + optional raw images for remote matching */
+export const edccEnrollBody = z.object({
+  externalId: z.string().min(1),
+  hand: z.string(),
+  rgbEnc: z.string(),
+  irEnc: z.string(),
+  quality: z.number().int().min(0).max(100),
+  rgbImage: z.string().optional(),
+  irImage: z.string().optional(),
+  rgbImageFormat: z.string().nullable().optional(),
+  irImageFormat: z.string().nullable().optional(),
+});
+
+/** EDCC identify: features + optional raw images. classId restricts search when provided. */
+export const edccIdentifyBody = z.object({
+  rgbEnc: z.string(),
+  irEnc: z.string(),
+  rgbImage: z.string().optional(),
+  irImage: z.string().optional(),
+  rgbImageFormat: z.string().nullable().optional(),
+  irImageFormat: z.string().nullable().optional(),
+  classId: z.string().nullable().optional(),
+});
+
+/** Log a palm scan attempt from device (local or EDCC). */
+export const palmScanEventBody = z.object({
+  matchStatus: z.enum(['VERIFIED', 'LOW_CONFIDENCE', 'NO_MATCH']),
+  studentId: z.string().uuid().optional().nullable(),
+  externalId: z.string().optional().nullable(),
+  confidence: z.number().min(0).max(1).optional().nullable(),
+  source: z.enum(['local', 'edcc']).optional().default('local'),
+  ts: z.number().int().positive().optional(),
 });
 
 export const nfcBody = z.object({
